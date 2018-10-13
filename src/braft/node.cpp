@@ -529,15 +529,15 @@ int NodeImpl::init(const NodeOptions& options) {
     }
 
     // add node to NodeManager
+    // Now the raft node is started , have to acquire the lock to avoid race
+    // conditions
+    std::unique_lock<raft_mutex_t> lck(_mutex);
     if (!NodeManager::GetInstance()->add(this)) {
         LOG(ERROR) << "NodeManager add " << _group_id 
                    << ":" << _server_id << " failed";
         return -1;
     }
 
-    // Now the raft node is started , have to acquire the lock to avoid race
-    // conditions
-    std::unique_lock<raft_mutex_t> lck(_mutex);
     if (_conf.stable() && _conf.conf.size() == 1u
             && _conf.conf.contains(_server_id)) {
         // The group contains only this server which must be the LEADER, trigger

@@ -77,6 +77,7 @@ public:
 
     // Starts this node
     int start(std::string a_strConf, std::string a_strGroup, int a_nIndex,std::string a_strDataPath) {
+		std::string a_strIndex=std::to_string(a_nIndex);
         butil::EndPoint addr(butil::my_ip(), FLAGS_port);
         braft::NodeOptions node_options;
         if (node_options.initial_conf.parse_from(a_strConf) != 0) {
@@ -88,11 +89,12 @@ public:
         node_options.node_owns_fsm = false;
         node_options.snapshot_interval_s = FLAGS_snapshot_interval;
         std::string prefix = "local://" + a_strDataPath;
-        node_options.log_uri = prefix + "/log";
-        node_options.raft_meta_uri = prefix + "/raft_meta";
-        node_options.snapshot_uri = prefix + "/snapshot";
+        node_options.log_uri = prefix + "/log"+a_strIndex;
+        node_options.raft_meta_uri = prefix + "/raft_meta"+a_strIndex;
+        node_options.snapshot_uri = prefix + "/snapshot"+a_strIndex;
         node_options.disable_cli = FLAGS_disable_cli;
         braft::Node* node = new braft::Node(a_strGroup, braft::PeerId(addr,a_nIndex));
+        LOG(INFO)<<a_strGroup;
         if (node->init(node_options) != 0) {
             LOG(ERROR) << "Fail to init raft node";
             delete node;
@@ -417,7 +419,7 @@ int main(int argc, char* argv[]) {
         LOG(ERROR) << "Fail to start Counter1";
         return -1;
     }
-    if (counter2.start(FLAGS_conf1,FLAGS_group1,0,FLAGS_data_path1) != 0) {
+    if (counter2.start(FLAGS_conf2,FLAGS_group2,1,FLAGS_data_path2) != 0) {
         LOG(ERROR) << "Fail to start Counter2";
         return -1;
     }
