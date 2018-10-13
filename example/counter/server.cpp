@@ -33,7 +33,7 @@ DEFINE_string(data_path1, "./data1", "Path of data stored on for group 1");
 DEFINE_string(group1, "Counter1", "Id of the replication group 1");
 
 DEFINE_string(conf2, "", "Initial configuration of the replication group 2");
-DEFINE_string(data_path1, "./data2", "Path of data stored on for group 2");
+DEFINE_string(data_path2, "./data2", "Path of data stored on for group 2");
 DEFINE_string(group2, "Counter2", "Id of the replication group 2");
 
 namespace example {
@@ -350,6 +350,26 @@ private:
     Counter* _counter;
 };
 
+class CounterServiceNextImpl : public CounterServiceNext {
+public:
+    explicit CounterServiceNextImpl(Counter* counter) : _counter(counter) {}
+    void fetch_add(::google::protobuf::RpcController* controller,
+                   const ::example::FetchAddRequest* request,
+                   ::example::CounterResponse* response,
+                   ::google::protobuf::Closure* done) {
+        return _counter->fetch_add(request, response, done);
+    }
+    void get(::google::protobuf::RpcController* controller,
+             const ::example::GetRequest* request,
+             ::example::CounterResponse* response,
+             ::google::protobuf::Closure* done) {
+        brpc::ClosureGuard done_guard(done);
+        return _counter->get(response);
+    }
+private:
+    Counter* _counter;
+};
+
 }  // namespace example
 
 int main(int argc, char* argv[]) {
@@ -359,13 +379,18 @@ int main(int argc, char* argv[]) {
     brpc::Server server;
     example::Counter counter1;
     example::CounterServiceImpl service1(&counter1);
-//	example::Counter counter2;
-//  example::CounterServiceImpl service2(&counter2);
+	example::Counter counter2;
+    example::CounterServiceNextImpl service2(&counter2);
 
     // Add your service into RPC rerver
     if (server.AddService(&service1, 
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(ERROR) << "Fail to add service";
+        LOG(ERROR) << "Fail to add service1";
+        return -1;
+    }
+	if (server.AddService(&service2, 
+                          brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        LOG(ERROR) << "Fail to add service2";
         return -1;
     }
     // raft can share the same RPC server. Notice the second parameter, because
@@ -389,10 +414,13 @@ int main(int argc, char* argv[]) {
 
     // It's ok to start Counter;
     if (counter1.start(FLAGS_conf1,FLAGS_group1,0,FLAGS_data_path1) != 0) {
-        LOG(ERROR) << "Fail to start Counter";
+        LOG(ERROR) << "Fail to start Counter1";
         return -1;
     }
-
+    if (counter2.start(FLAGS_conf1,FLAGS_group1,0,FLAGS_data_path1) != 0) {
+        LOG(ERROR) << "Fail to start Counter2";
+        return -1;
+    }
     LOG(INFO) << "Counter service is running on " << server.listen_address();
     // Wait until 'CTRL-C' is pressed. then Stop() and Join() the service
     while (!brpc::IsAskedToQuit()) {
@@ -403,10 +431,12 @@ int main(int argc, char* argv[]) {
 
     // Stop counter before server
     counter1.shutdown();
+	counter2.shutdown();
     server.Stop(0);
 
     // Wait until all the processing tasks are over.
     counter1.join();
+	counter2.join();
     server.Join();
     return 0;
 }

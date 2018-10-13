@@ -23,3 +23,8 @@ service CounterService {
     rpc fetch_add(FetchAddRequest) returns (CounterResponse);
     rpc get(GetRequest) returns (CounterResponse);
 };
+
+service CounterServiceNext {
+    rpc fetch_add(FetchAddRequest) returns (CounterResponse);
+    rpc get(GetRequest) returns (CounterResponse);
+};

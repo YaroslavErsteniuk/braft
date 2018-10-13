@@ -43,7 +43,7 @@ fi
 
 raft_peers1=""
 for ((i=0; i<$FLAGS_server_num; ++i)); do
-    raft_peers2="${raft_peers1}${IP}:$((${FLAGS_server_port}+i)):0,"
+    raft_peers1="${raft_peers1}${IP}:$((${FLAGS_server_port}+i)):0,"
 done
 
 

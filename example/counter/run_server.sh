@@ -68,6 +68,6 @@ for ((i=0; i<$FLAGS_server_num; ++i)); do
         -crash_on_fatal_log=${FLAGS_crash_on_fatal} \
         -raft_max_segment_size=${FLAGS_max_segment_size} \
         -raft_sync=${FLAGS_sync} \
-        -port=$((${FLAGS_port}+i)) -conf1="${raft_peers1}" > std.log 2>&1 &
+        -port=$((${FLAGS_port}+i)) -conf1="${raft_peers1}" -conf2="${raft_peers2}"> std.log 2>&1 &
     cd ../..
 done
