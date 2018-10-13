@@ -19,22 +19,20 @@ mydir="${BASH_SOURCE%/*}"
 if [[ ! -d "$mydir" ]]; then mydir="$PWD"; fi
 . $mydir/../shflags
 
+
 # define command-line flags
-DEFINE_string crash_on_fatal 'true' 'Crash on fatal log'
-DEFINE_integer bthread_concurrency '18' 'Number of worker pthreads'
-DEFINE_string sync 'true' 'fsync each time'
-DEFINE_string valgrind 'false' 'Run in valgrind'
-DEFINE_integer max_segment_size '8388608' 'Max segment size'
-DEFINE_integer server_num '3' 'Number of servers'
 DEFINE_boolean clean 1 'Remove old "runtime" dir before running'
-DEFINE_integer port 9030 "Port of the first server"
+DEFINE_integer add_percentage 100 'Percentage of fetch_add operation'
+DEFINE_integer bthread_concurrency '8' 'Number of worker pthreads'
+DEFINE_integer server_port 9030 "Port of the first server"
+DEFINE_integer server_num '3' 'Number of servers'
+DEFINE_integer thread_num 1 'Number of sending thread'
+DEFINE_string crash_on_fatal 'true' 'Crash on fatal log'
+DEFINE_string log_each_request 'true' 'Print log for each request'
+DEFINE_string valgrind 'false' 'Run in valgrind'
+DEFINE_string use_bthread "true" "Use bthread to send request"
 
-# parse the command-line
 FLAGS "$@" || exit 1
-eval set -- "${FLAGS_ARGV}"
-
-# The alias for printing to stderr
-alias error=">&2 echo counter: "
 
 # hostname prefers ipv6
 IP=`hostname -i | awk '{print $NF}'`
@@ -45,29 +43,23 @@ fi
 
 raft_peers1=""
 for ((i=0; i<$FLAGS_server_num; ++i)); do
-    raft_peers1="${raft_peers1}${IP}:$((${FLAGS_port}+i)):0,"
+    raft_peers2="${raft_peers1}${IP}:$((${FLAGS_server_port}+i)):0,"
 done
+
 
 raft_peers2=""
 for ((i=0; i<$FLAGS_server_num; ++i)); do
-    raft_peers2="${raft_peers2}${IP}:$((${FLAGS_port}+i)):1,"
+    raft_peers2="${raft_peers2}${IP}:$((${FLAGS_server_port}+i)):1,"
 done
-
-if [ "$FLAGS_clean" == "0" ]; then
-    rm -rf runtime
-fi
 
 export TCMALLOC_SAMPLE_PARAMETER=524288
 
-for ((i=0; i<$FLAGS_server_num; ++i)); do
-    mkdir -p runtime/$i
-    cp ./counter_server runtime/$i
-    cd runtime/$i
-    ${VALGRIND} ./counter_server \
-        -bthread_concurrency=${FLAGS_bthread_concurrency}\
-        -crash_on_fatal_log=${FLAGS_crash_on_fatal} \
-        -raft_max_segment_size=${FLAGS_max_segment_size} \
-        -raft_sync=${FLAGS_sync} \
-        -port=$((${FLAGS_port}+i)) -conf1="${raft_peers1}" > std.log 2>&1 &
-    cd ../..
-done
+${VALGRIND} ./counter_client \
+        --add_percentage=${FLAGS_add_percentage} \
+        --bthread_concurrency=${FLAGS_bthread_concurrency} \
+        --conf="${raft_peers2}" \
+        --crash_on_fatal_log=${FLAGS_crash_on_fatal} \
+        --log_each_request=${FLAGS_log_each_request} \
+        --thread_num=${FLAGS_thread_num} \
+        --use_bthread=${FLAGS_use_bthread} \
+

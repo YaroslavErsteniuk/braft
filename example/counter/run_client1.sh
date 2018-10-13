@@ -24,11 +24,11 @@ if [[ ! -d "$mydir" ]]; then mydir="$PWD"; fi
 DEFINE_boolean clean 1 'Remove old "runtime" dir before running'
 DEFINE_integer add_percentage 100 'Percentage of fetch_add operation'
 DEFINE_integer bthread_concurrency '8' 'Number of worker pthreads'
-DEFINE_integer server_port 8100 "Port of the first server"
+DEFINE_integer server_port 9030 "Port of the first server"
 DEFINE_integer server_num '3' 'Number of servers'
 DEFINE_integer thread_num 1 'Number of sending thread'
 DEFINE_string crash_on_fatal 'true' 'Crash on fatal log'
-DEFINE_string log_each_request 'false' 'Print log for each request'
+DEFINE_string log_each_request 'true' 'Print log for each request'
 DEFINE_string valgrind 'false' 'Run in valgrind'
 DEFINE_string use_bthread "true" "Use bthread to send request"
 
@@ -41,9 +41,15 @@ if [ "$FLAGS_valgrind" == "true" ] && [ $(which valgrind) ] ; then
     VALGRIND="valgrind --tool=memcheck --leak-check=full"
 fi
 
-raft_peers=""
+raft_peers1=""
 for ((i=0; i<$FLAGS_server_num; ++i)); do
-    raft_peers="${raft_peers}${IP}:$((${FLAGS_server_port}+i)):0,"
+    raft_peers2="${raft_peers1}${IP}:$((${FLAGS_server_port}+i)):0,"
+done
+
+
+raft_peers2=""
+for ((i=0; i<$FLAGS_server_num; ++i)); do
+    raft_peers2="${raft_peers2}${IP}:$((${FLAGS_server_port}+i)):1,"
 done
 
 export TCMALLOC_SAMPLE_PARAMETER=524288
@@ -51,7 +57,7 @@ export TCMALLOC_SAMPLE_PARAMETER=524288
 ${VALGRIND} ./counter_client \
         --add_percentage=${FLAGS_add_percentage} \
         --bthread_concurrency=${FLAGS_bthread_concurrency} \
-        --conf="${raft_peers}" \
+        --conf="${raft_peers1}" \
         --crash_on_fatal_log=${FLAGS_crash_on_fatal} \
         --log_each_request=${FLAGS_log_each_request} \
         --thread_num=${FLAGS_thread_num} \

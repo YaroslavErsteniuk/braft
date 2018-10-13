@@ -26,11 +26,15 @@ DEFINE_bool(disable_cli, false, "Don't allow raft_cli access this node");
 DEFINE_bool(log_applied_task, false, "Print notice log when a task is applied");
 DEFINE_int32(election_timeout_ms, 5000, 
             "Start election in such milliseconds if disconnect with the leader");
-DEFINE_int32(port, 8100, "Listen port of this peer");
+DEFINE_int32(port, 9030, "Listen port of this peer");
 DEFINE_int32(snapshot_interval, 30, "Interval between each snapshot");
-DEFINE_string(conf, "", "Initial configuration of the replication group");
-DEFINE_string(data_path, "./data", "Path of data stored on");
-DEFINE_string(group, "Counter", "Id of the replication group");
+DEFINE_string(conf1, "", "Initial configuration of the replication group 1");
+DEFINE_string(data_path1, "./data1", "Path of data stored on for group 1");
+DEFINE_string(group1, "Counter1", "Id of the replication group 1");
+
+DEFINE_string(conf2, "", "Initial configuration of the replication group 2");
+DEFINE_string(data_path1, "./data2", "Path of data stored on for group 2");
+DEFINE_string(group2, "Counter2", "Id of the replication group 2");
 
 namespace example {
 class Counter;
@@ -72,23 +76,23 @@ public:
     }
 
     // Starts this node
-    int start() {
+    int start(std::string a_strConf, std::string a_strGroup, int a_nIndex,std::string a_strDataPath) {
         butil::EndPoint addr(butil::my_ip(), FLAGS_port);
         braft::NodeOptions node_options;
-        if (node_options.initial_conf.parse_from(FLAGS_conf) != 0) {
-            LOG(ERROR) << "Fail to parse configuration `" << FLAGS_conf << '\'';
+        if (node_options.initial_conf.parse_from(a_strConf) != 0) {
+            LOG(ERROR) << "Fail to parse configuration `" << a_strConf << '\'';
             return -1;
         }
         node_options.election_timeout_ms = FLAGS_election_timeout_ms;
         node_options.fsm = this;
         node_options.node_owns_fsm = false;
         node_options.snapshot_interval_s = FLAGS_snapshot_interval;
-        std::string prefix = "local://" + FLAGS_data_path;
+        std::string prefix = "local://" + a_strDataPath;
         node_options.log_uri = prefix + "/log";
         node_options.raft_meta_uri = prefix + "/raft_meta";
         node_options.snapshot_uri = prefix + "/snapshot";
         node_options.disable_cli = FLAGS_disable_cli;
-        braft::Node* node = new braft::Node(FLAGS_group, braft::PeerId(addr));
+        braft::Node* node = new braft::Node(a_strGroup, braft::PeerId(addr,a_nIndex));
         if (node->init(node_options) != 0) {
             LOG(ERROR) << "Fail to init raft node";
             delete node;
@@ -353,11 +357,13 @@ int main(int argc, char* argv[]) {
 
     // Generally you only need one Server.
     brpc::Server server;
-    example::Counter counter;
-    example::CounterServiceImpl service(&counter);
+    example::Counter counter1;
+    example::CounterServiceImpl service1(&counter1);
+//	example::Counter counter2;
+//  example::CounterServiceImpl service2(&counter2);
 
     // Add your service into RPC rerver
-    if (server.AddService(&service, 
+    if (server.AddService(&service1, 
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(ERROR) << "Fail to add service";
         return -1;
@@ -382,7 +388,7 @@ int main(int argc, char* argv[]) {
     }
 
     // It's ok to start Counter;
-    if (counter.start() != 0) {
+    if (counter1.start(FLAGS_conf1,FLAGS_group1,0,FLAGS_data_path1) != 0) {
         LOG(ERROR) << "Fail to start Counter";
         return -1;
     }
@@ -396,11 +402,11 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << "Counter service is going to quit";
 
     // Stop counter before server
-    counter.shutdown();
+    counter1.shutdown();
     server.Stop(0);
 
     // Wait until all the processing tasks are over.
-    counter.join();
+    counter1.join();
     server.Join();
     return 0;
 }

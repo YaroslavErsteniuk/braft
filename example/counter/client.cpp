@@ -27,8 +27,9 @@ DEFINE_int32(add_percentage, 100, "Percentage of fetch_add");
 DEFINE_int64(added_by, 1, "Num added to each peer");
 DEFINE_int32(thread_num, 1, "Number of threads sending requests");
 DEFINE_int32(timeout_ms, 1000, "Timeout for each request");
+
 DEFINE_string(conf, "", "Configuration of the raft group");
-DEFINE_string(group, "Counter", "Id of the replication group");
+DEFINE_string(group, "Counter1", "Id of the replication group");
 
 bvar::LatencyRecorder g_latency_recorder("counter_client");
 
