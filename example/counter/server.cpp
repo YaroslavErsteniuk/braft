@@ -334,43 +334,35 @@ void FetchAddClosure::Run() {
 // Implements example::CounterService if you are using brpc.
 class CounterServiceImpl : public CounterService {
 public:
-    explicit CounterServiceImpl(Counter* counter) : _counter(counter) {}
+    explicit CounterServiceImpl(Counter* counter1,Counter* counter2) : _counter1(counter1),_counter2(counter2) {}
     void fetch_add(::google::protobuf::RpcController* controller,
                    const ::example::FetchAddRequest* request,
                    ::example::CounterResponse* response,
                    ::google::protobuf::Closure* done) {
-        return _counter->fetch_add(request, response, done);
+    switch (request->counter()) {
+	case 1:
+	    return _counter1->fetch_add(request, response, done);
+ 	case 2:
+	    return _counter2->fetch_add(request, response, done);
+	}       
     }
     void get(::google::protobuf::RpcController* controller,
              const ::example::GetRequest* request,
              ::example::CounterResponse* response,
              ::google::protobuf::Closure* done) {
         brpc::ClosureGuard done_guard(done);
-        return _counter->get(response);
+    	switch (request->counter()) {
+	case 1:
+	    return _counter1->get(response);
+ 	case 2:
+	    return _counter2->get(response);
+	} 
     }
 private:
-    Counter* _counter;
+    Counter* _counter1;
+    Counter* _counter2;    
 };
 
-class CounterServiceNextImpl : public CounterServiceNext {
-public:
-    explicit CounterServiceNextImpl(Counter* counter) : _counter(counter) {}
-    void fetch_add(::google::protobuf::RpcController* controller,
-                   const ::example::FetchAddRequest* request,
-                   ::example::CounterResponse* response,
-                   ::google::protobuf::Closure* done) {
-        return _counter->fetch_add(request, response, done);
-    }
-    void get(::google::protobuf::RpcController* controller,
-             const ::example::GetRequest* request,
-             ::example::CounterResponse* response,
-             ::google::protobuf::Closure* done) {
-        brpc::ClosureGuard done_guard(done);
-        return _counter->get(response);
-    }
-private:
-    Counter* _counter;
-};
 
 }  // namespace example
 
@@ -378,28 +370,21 @@ int main(int argc, char* argv[]) {
     GFLAGS_NS::ParseCommandLineFlags(&argc, &argv, true);
 
     // Generally you only need one Server.
-    brpc::Server server;
-    example::Counter counter1;
-    example::CounterServiceImpl service1(&counter1);
-	example::Counter counter2;
-    example::CounterServiceNextImpl service2(&counter2);
+    brpc::Server server1;
+    example::Counter counter1, counter2;
+    example::CounterServiceImpl service1(&counter1,&counter2d);
 
     // Add your service into RPC rerver
-    if (server.AddService(&service1, 
+    if (server1.AddService(&service1,
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(ERROR) << "Fail to add service1";
-        return -1;
-    }
-	if (server.AddService(&service2, 
-                          brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(ERROR) << "Fail to add service2";
         return -1;
     }
     // raft can share the same RPC server. Notice the second parameter, because
     // adding services into a running server is not allowed and the listen
     // address of this server is impossible to get before the server starts. You
     // have to specify the address of the server.
-    if (braft::add_service(&server, FLAGS_port) != 0) {
+    if (braft::add_service(&server1, FLAGS_port) != 0) {
         LOG(ERROR) << "Fail to add raft service";
         return -1;
     }
@@ -409,7 +394,7 @@ int main(int argc, char* argv[]) {
     // clients.
     // Notice the default options of server is used here. Check out details from
     // the doc of brpc if you would like change some options;
-    if (server.Start(FLAGS_port, NULL) != 0) {
+    if (server1.Start(FLAGS_port, NULL) != 0) {
         LOG(ERROR) << "Fail to start Server";
         return -1;
     }
@@ -423,7 +408,7 @@ int main(int argc, char* argv[]) {
         LOG(ERROR) << "Fail to start Counter2";
         return -1;
     }
-    LOG(INFO) << "Counter service is running on " << server.listen_address();
+    LOG(INFO) << "Counter service is running on " << server1.listen_address();
     // Wait until 'CTRL-C' is pressed. then Stop() and Join() the service
     while (!brpc::IsAskedToQuit()) {
         sleep(1);
@@ -433,12 +418,12 @@ int main(int argc, char* argv[]) {
 
     // Stop counter before server
     counter1.shutdown();
-	counter2.shutdown();
-    server.Stop(0);
+    counter2.shutdown();
+    server1.Stop(0);
 
     // Wait until all the processing tasks are over.
     counter1.join();
-	counter2.join();
-    server.Join();
+    counter2.join();
+    server1.Join();
     return 0;
 }

@@ -27,6 +27,7 @@ DEFINE_int32(add_percentage, 100, "Percentage of fetch_add");
 DEFINE_int64(added_by, 1, "Num added to each peer");
 DEFINE_int32(thread_num, 1, "Number of threads sending requests");
 DEFINE_int32(timeout_ms, 1000, "Timeout for each request");
+DEFINE_int32(counter_n, 1, "For defining counter group");
 
 DEFINE_string(conf, "", "Configuration of the raft group");
 DEFINE_string(group, "Counter1", "Id of the replication group");
@@ -67,10 +68,12 @@ static void* sender(void* arg) {
 
         if (butil::fast_rand_less_than(100) < (size_t)FLAGS_add_percentage) {
             example::FetchAddRequest request;
+            request.set_counter(FLAGS_counter_n);
             request.set_value(FLAGS_added_by);
             stub.fetch_add(&cntl, &request, &response, NULL);
         } else {
             example::GetRequest request;
+            request.set_counter(FLAGS_counter_n);
             stub.get(&cntl, &request, &response, NULL);
         }
         if (cntl.Failed()) {

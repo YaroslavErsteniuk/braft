@@ -27,6 +27,7 @@ DEFINE_integer bthread_concurrency '8' 'Number of worker pthreads'
 DEFINE_integer server_port 9030 "Port of the first server"
 DEFINE_integer server_num '3' 'Number of servers'
 DEFINE_integer thread_num 1 'Number of sending thread'
+DEFINE_integer counter_n 2 'number of group'
 DEFINE_string crash_on_fatal 'true' 'Crash on fatal log'
 DEFINE_string log_each_request 'true' 'Print log for each request'
 DEFINE_string valgrind 'false' 'Run in valgrind'
@@ -62,4 +63,5 @@ ${VALGRIND} ./counter_client \
         --log_each_request=${FLAGS_log_each_request} \
         --thread_num=${FLAGS_thread_num} \
         --use_bthread=${FLAGS_use_bthread} \
+	--counter_n ${FLAGS_counter_n} \
 
